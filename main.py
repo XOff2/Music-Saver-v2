@@ -58,11 +58,12 @@ async def search(ctx, *, query=None):
 # ---------------- SAVE COMMAND ----------------
 @bot.command()
 async def save(ctx, command=None, name=None, *, songname=None):
-    if not command or not name:
+
+    if not command or not name or not songname:
         return await ctx.send("Format: ?save <command> name <songname>")
 
-    if name.lower() != "name":
-        return await ctx.send("Format error: expected 'name' keyword.")
+    if name.lower() not in ["name", "-name", "--name"]:
+        return await ctx.send("Format error: expected keyword 'name' between command and songname.")
 
     data = load_data()
     data[songname] = command
