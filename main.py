@@ -5,6 +5,7 @@ import json
 import os
 
 intents = discord.Intents.default()
+intents.message_content = True
 bot = commands.Bot(command_prefix="?", intents=intents)
 
 DATA_FILE = "songs.json"
