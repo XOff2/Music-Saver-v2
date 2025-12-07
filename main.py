@@ -57,13 +57,24 @@ async def search(ctx, *, query=None):
 
 # ---------------- SAVE COMMAND ----------------
 @bot.command()
-async def save(ctx, command=None, name=None, *, songname=None):
-
-    if not command or not name or not songname:
+async def save(ctx, *args):
+    if len(args) < 3:
         return await ctx.send("Format: ?save <command> name <songname>")
 
-    if name.lower() not in ["name", "-name", "--name"]:
-        return await ctx.send("Format error: expected keyword 'name' between command and songname.")
+    # پیدا کردن keyword "name"
+    try:
+        name_index = args.index("name")
+    except ValueError:
+        return await ctx.send("Format error: expected 'name' keyword.")
+
+    # command: هر چیزی قبل از name
+    command = " ".join(args[:name_index])
+
+    # songname: هر چیزی بعد از name
+    songname = " ".join(args[name_index + 1:])
+
+    if not command or not songname:
+        return await ctx.send("Format error: missing command or songname.")
 
     data = load_data()
     data[songname] = command
@@ -74,8 +85,8 @@ async def save(ctx, command=None, name=None, *, songname=None):
         description=f"Saved: **{songname}**",
         color=0x5cff4d
     )
-    await ctx.send(embed=embed)
 
+    await ctx.send(embed=embed)
 
 # ---------------- LIST COMMAND ----------------
 @bot.command()
