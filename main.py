@@ -1,152 +1,79 @@
 import discord
 from discord.ext import commands
-from discord.ui import Button, View
-import json
-import os
+from discord import app_commands
+from discord.ui import View, Button
 
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix="?", intents=intents)
 
-DATA_FILE = "songs.json"
+bot = commands.Bot(command_prefix="?", intents=intents, help_command=None)  # حذف help پیش‌فرض
 
-# Load or create storage
-if not os.path.exists(DATA_FILE):
-    with open(DATA_FILE, "w") as f:
-        json.dump({}, f)
 
-def load_data():
-    with open(DATA_FILE, "r") as f:
-        return json.load(f)
+# ------------------------- CUSTOM HELP -----------------------------
 
-def save_data(data):
-    with open(DATA_FILE, "w") as f:
-        json.dump(data, f, indent=4)
-
-bot = commands.Bot(command_prefix="?", help_command=None, intents=intents)
-
-# ---------------- HELP COMMAND ----------------
-@bot.command()
-async def help(ctx):
+@bot.command(name="help")
+async def help_command(ctx):
     embed = discord.Embed(
-        title="Bot Commands",
-        description=(
-            "**?search <name>** - Search song name\n"
-            "**?save <command> name <songname>** - Save a music command\n"
-            "**?list** - List saved commands\n"
-            "**?delete <songname>** - Delete a saved command\n"
-        ),
-        color=0x2b8cff
-    )
-    await ctx.send(embed=embed)
-
-
-# ---------------- SEARCH COMMAND ----------------
-@bot.command()
-async def search(ctx, *, query=None):
-    if not query:
-        return await ctx.send("You must enter a song name.")
-
-    embed = discord.Embed(
-        title="Search Result",
-        description=f"Search keyword: **{query}**",
-        color=0x00ff9d
-    )
-    await ctx.send(embed=embed)
-
-
-# ---------------- SAVE COMMAND ----------------
-@bot.command()
-async def save(ctx, *args):
-    if len(args) < 3:
-        return await ctx.send("Format: ?save <command> name <songname>")
-
-    # پیدا کردن keyword "name"
-    try:
-        name_index = args.index("name")
-    except ValueError:
-        return await ctx.send("Format error: expected 'name' keyword.")
-
-    # command: هر چیزی قبل از name
-    command = " ".join(args[:name_index])
-
-    # songname: هر چیزی بعد از name
-    songname = " ".join(args[name_index + 1:])
-
-    if not command or not songname:
-        return await ctx.send("Format error: missing command or songname.")
-
-    data = load_data()
-    data[songname] = command
-    save_data(data)
-
-    embed = discord.Embed(
-        title="Saved",
-        description=f"Saved: **{songname}**",
-        color=0x5cff4d
+        title="🎵 راهنمای ربات Music Saver",
+        description="تمام کامندهای ربات اینجاست:",
+        color=0xFFD700
     )
 
-    await ctx.send(embed=embed)
+    embed.add_field(name="🎶 ?play <اسم آهنگ>", value="پخش آهنگ", inline=False)
+    embed.add_field(name="⬇️ ?save <اسم آهنگ>", value="سیو آهنگ", inline=False)
+    embed.add_field(name="📜 ?list", value="نمایش لیست کامل کامندها", inline=False)
 
-# ---------------- LIST COMMAND ----------------
-@bot.command()
-async def list(ctx):
-    data = load_data()
+    # دکمه‌ای که کامند "/play" را وارد چت کاربر کند
+    view = View()
+    view.add_item(Button(
+        label="🎧 اجرای دستور /play",
+        style=discord.ButtonStyle.primary,
+        custom_id="insert_play"
+    ))
 
-    if not data:
-        return await ctx.send("No saved commands.")
+    await ctx.send(embed=embed, view=view)
 
-    embed = discord.Embed(
-        title="Saved Music Commands",
-        color=0x7289da
-    )
 
-    for song, cmd in data.items():
+# ------------------------- BUTTON HANDLER -----------------------------
 
-        # Insert into chat button
-        button = Button(label="Insert Command", style=discord.ButtonStyle.green)
-
-        async def button_callback(interaction, text=cmd):
+@bot.event
+async def on_interaction(interaction: discord.Interaction):
+    if interaction.type.name == "component":   # یعنی دکمه زده شد
+        if interaction.data.get("custom_id") == "insert_play":
             await interaction.response.send_message(
-                content=f"`{text}`", ephemeral=True
+                "برای استفاده:\n`/play <اسم آهنگ>` 🎵",
+                ephemeral=True
             )
 
-        button.callback = button_callback
-        view = View()
-        view.add_item(button)
 
-        embed.add_field(
-            name=f"**{song}**",
-            value=f"Command stored.",
-            inline=False
-        )
+# ------------------------- ?list COMMAND -----------------------------
 
-        await ctx.send(embed=embed, view=view)
-        embed = discord.Embed(title="")  # reset loop embed
-
-
-# ---------------- DELETE COMMAND ----------------
-@bot.command()
-async def delete(ctx, *, songname=None):
-    if not songname:
-        return await ctx.send("Enter a song name to delete.")
-
-    data = load_data()
-
-    if songname not in data:
-        return await ctx.send("Song not found.")
-
-    del data[songname]
-    save_data(data)
-
+@bot.command(name="list")
+async def list_command(ctx):
     embed = discord.Embed(
-        title="Deleted",
-        description=f"Removed: **{songname}**",
-        color=0xff4040
+        title="📜 Commands List",
+        description="All the Commands you can use:",
+        color=0x00FFAA
     )
+
+    embed.add_field(name="?play", value="پخش آهنگ", inline=False)
+    embed.add_field(name="?save", value="سیو آهنگ", inline=False)
+    embed.add_field(name="?list", value="نمایش همین لیست", inline=False)
+    embed.add_field(name="?help", value="کمک و راهنما", inline=False)
+
     await ctx.send(embed=embed)
 
 
-# ---------------- RUN BOT ----------------
-import os
-bot.run(os.getenv("DISCORD_TOKEN"))
+# ------------------------- BOT READY -----------------------------
+
+@bot.event
+async def on_ready():
+    print(f"Bot logged in as {bot.user}")
+    try:
+        synced = await bot.tree.sync()
+        print(f"Synced {len(synced)} slash commands.")
+    except Exception as e:
+        print("Sync Error:", e)
+
+
+bot.run("YOUR_TOKEN")
